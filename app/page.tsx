@@ -17,283 +17,257 @@ type Market = {
   closingDate: string;
 };
 
-function TrendIcon({ direction }: { direction: 'up' | 'down' | 'stable' }) {
-  if (direction === 'up') {
-    return (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path d="M4 12L12 4M12 4H6M12 4V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    );
-  }
-  if (direction === 'down') {
-    return (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path d="M12 4L4 12M4 12H10M4 12V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-    );
-  }
-  return (
-    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M4 8H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  );
-}
-
-function StatusBadge({ status }: { status: 'open' | 'closing_soon' | 'resolved' }) {
-  const styles = {
-    open: 'badge-open',
-    closing_soon: 'badge-closing-soon',
-    resolved: 'badge-resolved'
-  };
-
-  const labels = {
-    open: 'OPEN',
-    closing_soon: 'CLOSING SOON',
-    resolved: 'RESOLVED'
-  };
-
-  return (
-    <span className={styles[status]} role="status">
-      {labels[status]}
-    </span>
-  );
-}
-
-function BeliefIndicator({ delta, direction }: { delta: number; direction: 'up' | 'down' | 'stable' }) {
-  const trendClass = {
-    up: 'trend-increasing',
-    down: 'trend-decreasing',
-    stable: 'trend-stable'
-  }[direction];
-
-  const labels = {
-    up: 'Rising',
-    down: 'Falling',
-    stable: 'Steady'
-  };
-
-  const sign = direction === 'up' ? '+' : direction === 'down' ? '' : '~';
+function HeroMarket({ market }: { market: Market }) {
+  const yesPercent = market.currentBelief;
+  const noPercent = 100 - market.currentBelief;
   
   return (
-    <div className={trendClass}>
-      <TrendIcon direction={direction} />
-      <span className="text-body-small font-medium">
-        {sign}{Math.abs(delta).toFixed(1)}%
-      </span>
-      <span className="sr-only">{labels[direction]}</span>
+    <div className="relative w-full h-[600px] md:h-[700px] overflow-hidden rounded-2xl">
+      {/* Background image with gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900" />
+      <div className="hero-gradient absolute inset-0" />
+      
+      {/* Content */}
+      <div className="relative h-full flex flex-col justify-between p-8 md:p-12">
+        {/* Top badges */}
+        <div className="flex items-center gap-3">
+          <span className="badge badge-category">{market.category}</span>
+          {market.status === 'closing_soon' && (
+            <span className="badge badge-closing">Closing Soon</span>
+          )}
+        </div>
+        
+        {/* Bottom content */}
+        <div>
+          <h1 className="text-headline-hero text-white mb-6 max-w-4xl">
+            {market.question}
+          </h1>
+          
+          <p className="text-body mb-8 max-w-2xl">
+            {market.description}
+          </p>
+          
+          {/* YES/NO Chart */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <span className="text-green-positive text-sm font-semibold">YES</span>
+                <span className="text-green-positive text-2xl font-bold">{yesPercent}%</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-red-negative text-2xl font-bold">{noPercent}%</span>
+                <span className="text-red-negative text-sm font-semibold">NO</span>
+              </div>
+            </div>
+            
+            <div className="probability-bar">
+              <div className="flex h-full">
+                <div className="probability-fill-yes" style={{ width: `${yesPercent}%` }} />
+                <div className="probability-fill-no" style={{ width: `${noPercent}%` }} />
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4 text-caption">
+            <span>{market.participants.toLocaleString()} votes</span>
+            <span>•</span>
+            <span>{new Date(market.closingDate).toLocaleDateString()}</span>
+            <button className="text-cta-primary hover:underline ml-2">Place Answer →</button>
+          </div>
+        </div>
+        
+        {/* Large percentage overlay (top right) */}
+        <div className="absolute top-8 right-8 md:top-12 md:right-12">
+          <div className="bg-dark-card/80 backdrop-blur-sm rounded-2xl p-6 text-center">
+            <div className="percentage-large text-white">{yesPercent}%</div>
+            <div className="text-caption">Lean to Yes</div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-function HeroMarketCard({ market }: { market: Market }) {
+function MarketCard({ market, size = 'medium' }: { market: Market; size?: 'small' | 'medium' | 'large' }) {
+  const yesPercent = market.currentBelief;
+  const noPercent = 100 - market.currentBelief;
+  
+  const heightClass = size === 'large' ? 'h-[400px]' : size === 'medium' ? 'h-[350px]' : 'h-[300px]';
+  
   return (
-    <article className="card">
-      {/* Image */}
-      <div className="w-full h-80 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-        <span className="text-text-tertiary text-body-small font-medium">{market.category}</span>
-      </div>
+    <article className={`card-dark relative ${heightClass} flex flex-col`}>
+      {/* Image background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-700 to-slate-900 opacity-50" />
+      <div className="hero-gradient absolute inset-0" />
       
-      <div className="p-8 lg:p-10">
-        {/* Metadata row */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <StatusBadge status={market.status} />
-            <span className="text-label text-text-tertiary uppercase tracking-wider font-semibold">
-              {market.category}
-            </span>
-          </div>
-          <BeliefIndicator delta={market.delta} direction={market.deltaDirection} />
+      {/* Content */}
+      <div className="relative flex flex-col h-full p-6 justify-between">
+        {/* Top badges */}
+        <div className="flex items-center justify-between">
+          <span className="badge badge-category">{market.category}</span>
+          <div className="percentage-medium text-white">{yesPercent}%</div>
         </div>
-
-        {/* Headline */}
-        <h1 className="text-headline-1 mb-6">
-          {market.question}
-        </h1>
-
-        {/* Description */}
-        <p className="text-body-large text-text-secondary leading-relaxed mb-8">
-          {market.description}
-        </p>
-
-        {/* Stats */}
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <div className="text-body-small text-text-secondary mb-2">Current Belief</div>
-            <div className="number text-number-hero text-text-primary">
-              {market.currentBelief}%
+        
+        {/* Bottom content */}
+        <div>
+          <h3 className="text-headline-medium text-white mb-4 leading-tight">
+            {market.question}
+          </h3>
+          
+          {/* YES/NO Bar */}
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-green-positive text-xs font-semibold">YES</span>
+                <span className="text-green-positive text-lg font-bold">{yesPercent}%</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-red-negative text-lg font-bold">{noPercent}%</span>
+                <span className="text-red-negative text-xs font-semibold">NO</span>
+              </div>
+            </div>
+            
+            <div className="probability-bar">
+              <div className="flex h-full">
+                <div className="probability-fill-yes" style={{ width: `${yesPercent}%` }} />
+                <div className="probability-fill-no" style={{ width: `${noPercent}%` }} />
+              </div>
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-body-small text-text-secondary">
-              {market.participants.toLocaleString()} people positioned
-            </div>
+          
+          <div className="flex items-center gap-2 text-caption">
+            <span>{market.participants.toLocaleString()} votes</span>
           </div>
         </div>
-
-        {/* CTA */}
-        <button className="btn-primary w-full" aria-label={`View market: ${market.question}`}>
-          View Market
-        </button>
       </div>
     </article>
   );
 }
 
-function MarketCard({ market }: { market: Market }) {
+function StreamItem({ market }: { market: Market }) {
   return (
-    <article className="card h-full flex flex-col">
-      {/* Image */}
-      <div className="w-full h-56 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center flex-shrink-0">
-        <span className="text-text-tertiary text-caption font-medium">{market.category}</span>
+    <div className="flex items-center gap-4 p-4 bg-dark-card rounded-xl hover:bg-dark-elevated transition-colors">
+      <div className="w-16 h-16 bg-gradient-to-br from-slate-700 to-slate-900 rounded-lg flex-shrink-0" />
+      
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-semibold text-white truncate mb-1">
+          {market.question}
+        </h4>
+        <div className="flex items-center gap-2 text-caption">
+          <span>{market.category}</span>
+          <span>•</span>
+          <span>{market.participants.toLocaleString()} votes</span>
+        </div>
       </div>
       
-      <div className="p-6 flex flex-col flex-grow">
-        {/* Metadata row */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <StatusBadge status={market.status} />
-            <span className="text-label text-text-tertiary uppercase tracking-wider font-semibold">
-              {market.category}
-            </span>
-          </div>
-          <BeliefIndicator delta={market.delta} direction={market.deltaDirection} />
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="text-right">
+          <div className="text-lg font-bold text-white">{market.currentBelief}%</div>
+          <div className="text-xs text-green-positive">+{Math.abs(market.delta).toFixed(1)}%</div>
         </div>
-
-        {/* Headline */}
-        <h3 className="text-headline-4 mb-4 flex-grow">
-          {market.question}
-        </h3>
-
-        {/* Stats */}
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <div className="text-caption text-text-secondary mb-1">Current Belief</div>
-            <div className="number text-number-medium text-text-primary">
-              {market.currentBelief}%
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-caption text-text-secondary">
-              {market.participants.toLocaleString()} positioned
-            </div>
-          </div>
-        </div>
-
-        {/* CTA */}
-        <button className="btn-primary w-full text-body-small py-2.5" aria-label={`View market: ${market.question}`}>
-          View Market
-        </button>
       </div>
-    </article>
+    </div>
   );
 }
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'browse' | 'trending' | 'closing'>('browse');
+  const [activeCategory, setActiveCategory] = useState('All');
   const markets = marketData.markets as Market[];
-  const heroMarket = markets[0];
   
-  // Filter markets based on active tab
-  const filteredMarkets = (() => {
-    switch (activeTab) {
-      case 'trending':
-        return markets.slice(1).filter(m => Math.abs(m.delta) > 2);
-      case 'closing':
-        return markets.slice(1).filter(m => m.status === 'closing_soon');
-      default:
-        return markets.slice(1, 7); // Browse: show first 6
-    }
-  })();
-
-  const tabs = [
-    { id: 'browse' as const, label: 'Browse' },
-    { id: 'trending' as const, label: 'Trending' },
-    { id: 'closing' as const, label: 'Closing Soon' },
-  ];
-
+  const categories = ['All', 'Politics', 'Technology', 'Entertainment', 'Sports', 'Finance', 'Media'];
+  
+  const filteredMarkets = activeCategory === 'All' 
+    ? markets 
+    : markets.filter(m => m.category.toLowerCase() === activeCategory.toLowerCase());
+  
+  const heroMarket = filteredMarkets[0];
+  const gridMarkets = filteredMarkets.slice(1, 9);
+  const streamMarkets = filteredMarkets.slice(9, 15);
+  
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-dark-primary">
       {/* Header */}
-      <header className="bg-surface border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-          <h1 className="text-headline-2">Currents</h1>
+      <header className="sticky top-0 z-50 bg-dark-primary/95 backdrop-blur-sm border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-cta-primary rounded-full" />
+                <h1 className="text-xl font-bold text-white">Currents</h1>
+              </div>
+              
+              <nav className="hidden md:flex items-center gap-1">
+                {['Currents', 'Feed', 'All Markets'].map((item) => (
+                  <button
+                    key={item}
+                    className={item === 'Currents' ? 'tab tab-active' : 'tab'}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </nav>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <button className="btn-secondary text-sm">Sign In</button>
+              <button className="btn-primary text-sm">Sign Up</button>
+            </div>
+          </div>
         </div>
       </header>
-
+      
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Hero Market */}
-        <section className="mb-12 md:mb-16">
-          <HeroMarketCard market={heroMarket} />
+        <section className="mb-12">
+          <HeroMarket market={heroMarket} />
         </section>
-
-        {/* Section Header with Tabs */}
+        
+        {/* Category Filters */}
         <div className="mb-8">
-          <h2 className="text-headline-2 mb-6">Markets</h2>
-          
-          {/* Tabs */}
-          <div className="border-b border-border" role="tablist">
-            <div className="flex gap-8">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={activeTab === tab.id}
-                  aria-controls={`panel-${tab.id}`}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    pb-4 text-body font-medium transition-colors relative
-                    ${activeTab === tab.id 
-                      ? 'text-text-primary' 
-                      : 'text-text-secondary hover:text-text-primary'
-                    }
-                  `}
-                >
-                  {tab.label}
-                  {activeTab === tab.id && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-cta-primary" />
-                  )}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center gap-2 overflow-x-auto pb-2">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={activeCategory === cat ? 'tab tab-active' : 'tab'}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
         </div>
-
+        
         {/* Market Grid */}
-        <section 
-          role="tabpanel" 
-          id={`panel-${activeTab}`}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {filteredMarkets.length > 0 ? (
-            filteredMarkets.map(market => (
-              <MarketCard key={market.id} market={market} />
-            ))
-          ) : (
-            <div className="col-span-full text-center py-12">
-              <p className="text-body text-text-secondary">
-                No markets in this category yet.
-              </p>
-            </div>
-          )}
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+          {gridMarkets.map(market => (
+            <MarketCard key={market.id} market={market} />
+          ))}
         </section>
-
-        {/* View More */}
-        {filteredMarkets.length > 0 && (
-          <div className="mt-10 text-center">
-            <button className="btn-secondary">
-              View All Markets
+        
+        {/* The Stream */}
+        <section>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-white">The Stream</h2>
+            <button className="text-cta-primary text-sm font-semibold hover:underline">
+              View all →
             </button>
           </div>
-        )}
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {streamMarkets.map(market => (
+              <StreamItem key={market.id} market={market} />
+            ))}
+          </div>
+        </section>
       </main>
-
+      
       {/* Footer */}
-      <footer className="bg-surface border-t border-border mt-16 md:mt-20">
+      <footer className="border-t border-gray-800 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <p className="text-caption text-text-secondary text-center">
-            Currents Prototype — Editorial prediction markets
-          </p>
+          <div className="text-center text-caption">
+            <p>Where collective knowledge creates the present moment</p>
+          </div>
         </div>
       </footer>
     </div>
