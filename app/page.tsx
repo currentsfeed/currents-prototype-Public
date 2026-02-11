@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import marketData from '../market-data.json';
 
 type Market = {
@@ -17,20 +20,20 @@ type Market = {
 function TrendIcon({ direction }: { direction: 'up' | 'down' | 'stable' }) {
   if (direction === 'up') {
     return (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M4 12L12 4M12 4H6M12 4V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     );
   }
   if (direction === 'down') {
     return (
-      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+      <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <path d="M12 4L4 12M4 12H10M4 12V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     );
   }
   return (
-    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none">
+    <svg className="w-4 h-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d="M4 8H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
     </svg>
   );
@@ -38,9 +41,9 @@ function TrendIcon({ direction }: { direction: 'up' | 'down' | 'stable' }) {
 
 function StatusBadge({ status }: { status: 'open' | 'closing_soon' | 'resolved' }) {
   const styles = {
-    open: 'bg-[#4A90E2] text-white',
-    closing_soon: 'bg-[#E8A34D] text-white',
-    resolved: 'bg-[#7B8794] text-white'
+    open: 'badge-open',
+    closing_soon: 'badge-closing-soon',
+    resolved: 'badge-resolved'
   };
 
   const labels = {
@@ -50,71 +53,85 @@ function StatusBadge({ status }: { status: 'open' | 'closing_soon' | 'resolved' 
   };
 
   return (
-    <span className={`inline-flex items-center px-2 py-1 text-[11px] font-semibold tracking-wider uppercase rounded ${styles[status]}`}>
+    <span className={styles[status]} role="status">
       {labels[status]}
     </span>
   );
 }
 
 function BeliefIndicator({ delta, direction }: { delta: number; direction: 'up' | 'down' | 'stable' }) {
-  const colors = {
-    up: 'text-[#2D6A4F]',
-    down: 'text-[#9D5B4E]',
-    stable: 'text-[#5B6B7E]'
+  const trendClass = {
+    up: 'trend-increasing',
+    down: 'trend-decreasing',
+    stable: 'trend-stable'
+  }[direction];
+
+  const labels = {
+    up: 'Rising',
+    down: 'Falling',
+    stable: 'Steady'
   };
 
   const sign = direction === 'up' ? '+' : direction === 'down' ? '' : '~';
   
   return (
-    <div className={`flex items-center gap-1 ${colors[direction]}`}>
+    <div className={trendClass}>
       <TrendIcon direction={direction} />
-      <span className="text-sm font-medium">
+      <span className="text-body-small font-medium">
         {sign}{Math.abs(delta).toFixed(1)}%
       </span>
+      <span className="sr-only">{labels[direction]}</span>
     </div>
   );
 }
 
 function HeroMarketCard({ market }: { market: Market }) {
   return (
-    <article className="bg-white rounded-lg shadow-[0px_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0px_2px_8px_rgba(0,0,0,0.12)] transition-shadow overflow-hidden">
-      {/* Image placeholder */}
-      <div className="w-full h-64 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
-        <span className="text-slate-500 text-sm font-medium">{market.category}</span>
+    <article className="card">
+      {/* Image */}
+      <div className="w-full h-80 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
+        <span className="text-text-tertiary text-body-small font-medium">{market.category}</span>
       </div>
       
-      <div className="p-8">
-        <div className="flex items-start justify-between mb-4">
+      <div className="p-8 lg:p-10">
+        {/* Metadata row */}
+        <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-3">
             <StatusBadge status={market.status} />
-            <span className="text-xs text-[#9CA3AF] uppercase tracking-wider font-semibold">{market.category}</span>
+            <span className="text-label text-text-tertiary uppercase tracking-wider font-semibold">
+              {market.category}
+            </span>
           </div>
           <BeliefIndicator delta={market.delta} direction={market.deltaDirection} />
         </div>
 
-        <h1 className="font-serif text-4xl md:text-5xl font-semibold leading-tight mb-4 text-[#1A1D23]">
+        {/* Headline */}
+        <h1 className="text-headline-1 mb-6">
           {market.question}
         </h1>
 
-        <p className="text-base text-[#6B7280] leading-relaxed mb-6">
+        {/* Description */}
+        <p className="text-body-large text-text-secondary leading-relaxed mb-8">
           {market.description}
         </p>
 
-        <div className="flex items-end justify-between mb-6">
+        {/* Stats */}
+        <div className="flex items-end justify-between mb-8">
           <div>
-            <div className="text-sm text-[#6B7280] mb-1">Current Belief</div>
-            <div className="font-mono text-5xl font-semibold text-[#1A1D23]">
+            <div className="text-body-small text-text-secondary mb-2">Current Belief</div>
+            <div className="number text-number-hero text-text-primary">
               {market.currentBelief}%
             </div>
           </div>
           <div className="text-right">
-            <div className="text-sm text-[#6B7280]">
+            <div className="text-body-small text-text-secondary">
               {market.participants.toLocaleString()} people positioned
             </div>
           </div>
         </div>
 
-        <button className="w-full bg-[#2C4A6B] hover:bg-[#1E3447] text-white py-3 px-6 rounded-lg font-medium text-base transition-colors">
+        {/* CTA */}
+        <button className="btn-primary w-full" aria-label={`View market: ${market.question}`}>
           View Market
         </button>
       </div>
@@ -124,40 +141,46 @@ function HeroMarketCard({ market }: { market: Market }) {
 
 function MarketCard({ market }: { market: Market }) {
   return (
-    <article className="bg-white rounded-lg shadow-[0px_1px_3px_rgba(0,0,0,0.06)] hover:shadow-[0px_2px_8px_rgba(0,0,0,0.12)] transition-shadow overflow-hidden h-full flex flex-col">
-      {/* Image placeholder */}
-      <div className="w-full h-48 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center flex-shrink-0">
-        <span className="text-slate-500 text-sm font-medium">{market.category}</span>
+    <article className="card h-full flex flex-col">
+      {/* Image */}
+      <div className="w-full h-56 bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center flex-shrink-0">
+        <span className="text-text-tertiary text-caption font-medium">{market.category}</span>
       </div>
       
       <div className="p-6 flex flex-col flex-grow">
-        <div className="flex items-start justify-between mb-3">
+        {/* Metadata row */}
+        <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-2">
             <StatusBadge status={market.status} />
-            <span className="text-[11px] text-[#9CA3AF] uppercase tracking-wider font-semibold">{market.category}</span>
+            <span className="text-label text-text-tertiary uppercase tracking-wider font-semibold">
+              {market.category}
+            </span>
           </div>
           <BeliefIndicator delta={market.delta} direction={market.deltaDirection} />
         </div>
 
-        <h3 className="font-serif text-xl font-semibold leading-tight mb-3 text-[#1A1D23] flex-grow">
+        {/* Headline */}
+        <h3 className="text-headline-4 mb-4 flex-grow">
           {market.question}
         </h3>
 
-        <div className="flex items-end justify-between mb-4">
+        {/* Stats */}
+        <div className="flex items-end justify-between mb-6">
           <div>
-            <div className="text-xs text-[#6B7280] mb-1">Current Belief</div>
-            <div className="font-mono text-3xl font-semibold text-[#1A1D23]">
+            <div className="text-caption text-text-secondary mb-1">Current Belief</div>
+            <div className="number text-number-medium text-text-primary">
               {market.currentBelief}%
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-[#6B7280]">
+            <div className="text-caption text-text-secondary">
               {market.participants.toLocaleString()} positioned
             </div>
           </div>
         </div>
 
-        <button className="w-full bg-[#2C4A6B] hover:bg-[#1E3447] text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-colors mt-auto">
+        {/* CTA */}
+        <button className="btn-primary w-full text-body-small py-2.5" aria-label={`View market: ${market.question}`}>
           View Market
         </button>
       </div>
@@ -166,50 +189,109 @@ function MarketCard({ market }: { market: Market }) {
 }
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<'browse' | 'trending' | 'closing'>('browse');
   const markets = marketData.markets as Market[];
   const heroMarket = markets[0];
-  const gridMarkets = markets.slice(1, 7); // Show 6 markets in grid
+  
+  // Filter markets based on active tab
+  const filteredMarkets = (() => {
+    switch (activeTab) {
+      case 'trending':
+        return markets.slice(1).filter(m => Math.abs(m.delta) > 2);
+      case 'closing':
+        return markets.slice(1).filter(m => m.status === 'closing_soon');
+      default:
+        return markets.slice(1, 7); // Browse: show first 6
+    }
+  })();
+
+  const tabs = [
+    { id: 'browse' as const, label: 'Browse' },
+    { id: 'trending' as const, label: 'Trending' },
+    { id: 'closing' as const, label: 'Closing Soon' },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="bg-white border-b border-[#E5E7EB]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="font-serif text-3xl font-semibold text-[#1A1D23]">Currents</h1>
+      <header className="bg-surface border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+          <h1 className="text-headline-2">Currents</h1>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         {/* Hero Market */}
-        <section className="mb-12">
+        <section className="mb-12 md:mb-16">
           <HeroMarketCard market={heroMarket} />
         </section>
 
-        {/* Section Header */}
-        <div className="mb-6">
-          <h2 className="font-serif text-3xl font-semibold text-[#1A1D23]">Browse Markets</h2>
+        {/* Section Header with Tabs */}
+        <div className="mb-8">
+          <h2 className="text-headline-2 mb-6">Markets</h2>
+          
+          {/* Tabs */}
+          <div className="border-b border-border" role="tablist">
+            <div className="flex gap-8">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  aria-controls={`panel-${tab.id}`}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    pb-4 text-body font-medium transition-colors relative
+                    ${activeTab === tab.id 
+                      ? 'text-text-primary' 
+                      : 'text-text-secondary hover:text-text-primary'
+                    }
+                  `}
+                >
+                  {tab.label}
+                  {activeTab === tab.id && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-cta-primary" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Market Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {gridMarkets.map(market => (
-            <MarketCard key={market.id} market={market} />
-          ))}
+        <section 
+          role="tabpanel" 
+          id={`panel-${activeTab}`}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {filteredMarkets.length > 0 ? (
+            filteredMarkets.map(market => (
+              <MarketCard key={market.id} market={market} />
+            ))
+          ) : (
+            <div className="col-span-full text-center py-12">
+              <p className="text-body text-text-secondary">
+                No markets in this category yet.
+              </p>
+            </div>
+          )}
         </section>
 
         {/* View More */}
-        <div className="mt-8 text-center">
-          <button className="bg-[#8B7EA8] hover:bg-[#6F5F8A] text-white py-3 px-8 rounded-lg font-medium text-base transition-colors">
-            View All Markets
-          </button>
-        </div>
+        {filteredMarkets.length > 0 && (
+          <div className="mt-10 text-center">
+            <button className="btn-secondary">
+              View All Markets
+            </button>
+          </div>
+        )}
       </main>
 
       {/* Footer */}
-      <footer className="bg-white border-t border-[#E5E7EB] mt-16">
+      <footer className="bg-surface border-t border-border mt-16 md:mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <p className="text-sm text-[#6B7280] text-center">
+          <p className="text-caption text-text-secondary text-center">
             Currents Prototype — Editorial prediction markets
           </p>
         </div>
