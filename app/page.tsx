@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import marketData from '../market-data.json';
+import AuthModal from '../components/AuthModal';
+import PositionModal from '../components/PositionModal';
 
 type Market = {
   id: string;
@@ -69,7 +71,11 @@ function HeroMarket({ market }: { market: Market }) {
             <span>{market.participants.toLocaleString()} votes</span>
             <span>•</span>
             <span>{market.closingDate}</span>
-            <button className="ml-2 font-semibold" style={{ color: 'var(--accent-brand)' }}>
+            <button 
+              onClick={() => { setSelectedMarket(market); setIsPositionModalOpen(true); }}
+              className="ml-2 font-semibold" 
+              style={{ color: 'var(--accent-brand)' }}
+            >
               Place Answer →
             </button>
           </div>
@@ -157,6 +163,11 @@ function StreamItem({ market }: { market: Market }) {
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'signup' | 'signin'>('signup');
+  const [isPositionModalOpen, setIsPositionModalOpen] = useState(false);
+  const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
+  
   const markets = marketData.markets as Market[];
   
   const categories = ['All', 'Politics', 'Technology', 'Entertainment', 'Sports', 'Finance', 'Media'];
@@ -189,8 +200,18 @@ export default function Home() {
             </div>
             
             <div className="flex items-center gap-3">
-              <button className="btn-secondary text-sm px-4 py-2">Sign In</button>
-              <button className="btn-primary text-sm px-4 py-2">Sign Up</button>
+              <button 
+                onClick={() => { setAuthMode('signin'); setIsAuthModalOpen(true); }}
+                className="btn-secondary text-sm px-4 py-2"
+              >
+                Sign In
+              </button>
+              <button 
+                onClick={() => { setAuthMode('signup'); setIsAuthModalOpen(true); }}
+                className="btn-primary text-sm px-4 py-2"
+              >
+                Sign Up
+              </button>
             </div>
           </div>
         </div>
@@ -255,6 +276,23 @@ export default function Home() {
           </p>
         </div>
       </footer>
+
+      {/* Modals */}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)}
+        mode={authMode}
+      />
+      
+      {selectedMarket && (
+        <PositionModal
+          isOpen={isPositionModalOpen}
+          onClose={() => setIsPositionModalOpen(false)}
+          marketId={selectedMarket.id}
+          marketQuestion={selectedMarket.question}
+          initialProbability={selectedMarket.currentBelief}
+        />
+      )}
     </div>
   );
 }
