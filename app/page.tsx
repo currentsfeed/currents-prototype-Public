@@ -19,7 +19,7 @@ type Market = {
   closingDate: string;
 };
 
-function HeroMarket({ market }: { market: Market }) {
+function HeroMarket({ market, onPlaceAnswer }: { market: Market; onPlaceAnswer: (market: Market) => void }) {
   const yesPercent = market.currentBelief;
   const noPercent = 100 - market.currentBelief;
   
@@ -72,7 +72,7 @@ function HeroMarket({ market }: { market: Market }) {
             <span>•</span>
             <span>{market.closingDate}</span>
             <button 
-              onClick={() => { setSelectedMarket(market); setIsPositionModalOpen(true); }}
+              onClick={() => onPlaceAnswer(market)}
               className="ml-2 font-semibold" 
               style={{ color: 'var(--accent-brand)' }}
             >
@@ -220,7 +220,10 @@ export default function Home() {
       {/* Main Content */}
       <main className="max-w-[1440px] mx-auto px-6 py-8">
         {/* Hero Market */}
-        <HeroMarket market={heroMarket} />
+        <HeroMarket 
+          market={heroMarket} 
+          onPlaceAnswer={(market) => { setSelectedMarket(market); setIsPositionModalOpen(true); }}
+        />
         
         {/* Category Filters */}
         <div className="mb-8 overflow-x-auto">
