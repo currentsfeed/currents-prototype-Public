@@ -3,7 +3,12 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-export default function Navigation() {
+interface NavigationProps {
+  onSignIn?: () => void;
+  onSignUp?: () => void;
+}
+
+export default function Navigation({ onSignIn, onSignUp }: NavigationProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -124,10 +129,16 @@ export default function Navigation() {
               </>
             ) : (
               <div className="flex items-center space-x-2">
-                <button className="btn-secondary px-4 py-2">
+                <button 
+                  onClick={onSignIn}
+                  className="btn-secondary px-4 py-2"
+                >
                   Sign In
                 </button>
-                <button className="btn-primary px-4 py-2">
+                <button 
+                  onClick={onSignUp}
+                  className="btn-primary px-4 py-2"
+                >
                   Sign Up
                 </button>
               </div>
@@ -240,10 +251,16 @@ export default function Navigation() {
               </>
             ) : (
               <div className="space-y-2 pt-2">
-                <button className="w-full btn-secondary">
+                <button 
+                  onClick={() => { onSignIn?.(); setMobileMenuOpen(false); }}
+                  className="w-full btn-secondary"
+                >
                   Sign In
                 </button>
-                <button className="w-full btn-primary">
+                <button 
+                  onClick={() => { onSignUp?.(); setMobileMenuOpen(false); }}
+                  className="w-full btn-primary"
+                >
                   Sign Up
                 </button>
               </div>

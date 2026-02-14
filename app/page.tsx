@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import marketData from '../market-data.json';
-import AuthModal from '../components/AuthModal';
 import PositionModal from '../components/PositionModal';
 
 type Market = {
@@ -90,12 +89,15 @@ function HeroMarket({ market, onPlaceAnswer }: { market: Market; onPlaceAnswer: 
   );
 }
 
-function MarketCard({ market }: { market: Market }) {
+function MarketCard({ market, onPlaceAnswer }: { market: Market; onPlaceAnswer: (market: Market) => void }) {
   const yesPercent = market.currentBelief;
   const noPercent = 100 - market.currentBelief;
   
   return (
-    <article className="market-card">
+    <article 
+      className="market-card cursor-pointer hover:opacity-90 transition-opacity"
+      onClick={() => onPlaceAnswer(market)}
+    >
       <div className="card-image" />
       <div className="card-gradient" />
       
@@ -139,9 +141,12 @@ function MarketCard({ market }: { market: Market }) {
   );
 }
 
-function StreamItem({ market }: { market: Market }) {
+function StreamItem({ market, onPlaceAnswer }: { market: Market; onPlaceAnswer: (market: Market) => void }) {
   return (
-    <div className="stream-item">
+    <div 
+      className="stream-item cursor-pointer hover:bg-[rgba(255,255,255,0.02)] transition-colors"
+      onClick={() => onPlaceAnswer(market)}
+    >
       <div className="stream-thumbnail" />
       
       <div className="flex-1 min-w-0">
@@ -163,8 +168,6 @@ function StreamItem({ market }: { market: Market }) {
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('All');
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'signup' | 'signin'>('signup');
   const [isPositionModalOpen, setIsPositionModalOpen] = useState(false);
   const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
   
@@ -180,49 +183,20 @@ export default function Home() {
   const gridMarkets = filteredMarkets.slice(1, 9);
   const streamMarkets = filteredMarkets.slice(9, 15);
   
+  const handlePlaceAnswer = (market: Market) => {
+    setSelectedMarket(market);
+    setIsPositionModalOpen(true);
+  };
+  
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
-      {/* Header */}
-      <header className="header">
-        <div className="max-w-[1440px] mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full" style={{ background: 'var(--accent-brand)' }} />
-                <span className="text-xl font-bold">Currents</span>
-              </div>
-              
-              <nav className="hidden md:flex items-center gap-1">
-                <button className="tab tab-active">Currents</button>
-                <button className="tab">Feed</button>
-                <button className="tab">All Markets</button>
-              </nav>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => { setAuthMode('signin'); setIsAuthModalOpen(true); }}
-                className="btn-secondary text-sm px-4 py-2"
-              >
-                Sign In
-              </button>
-              <button 
-                onClick={() => { setAuthMode('signup'); setIsAuthModalOpen(true); }}
-                className="btn-primary text-sm px-4 py-2"
-              >
-                Sign Up
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
       
       {/* Main Content */}
       <main className="max-w-[1440px] mx-auto px-6 py-8">
         {/* Hero Market */}
         <HeroMarket 
           market={heroMarket} 
-          onPlaceAnswer={(market) => { setSelectedMarket(market); setIsPositionModalOpen(true); }}
+          onPlaceAnswer={handlePlaceAnswer}
         />
         
         {/* Category Filters */}
@@ -248,7 +222,7 @@ export default function Home() {
           }}
         >
           {gridMarkets.map(market => (
-            <MarketCard key={market.id} market={market} />
+            <MarketCard key={market.id} market={market} onPlaceAnswer={handlePlaceAnswer} />
           ))}
         </section>
         
@@ -264,7 +238,7 @@ export default function Home() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {streamMarkets.map(market => (
-                <StreamItem key={market.id} market={market} />
+                <StreamItem key={market.id} market={market} onPlaceAnswer={handlePlaceAnswer} />
               ))}
             </div>
           </section>
@@ -280,13 +254,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Modals */}
-      <AuthModal 
-        isOpen={isAuthModalOpen} 
-        onClose={() => setIsAuthModalOpen(false)}
-        mode={authMode}
-      />
-      
+      {/* Position Modal */}
       {selectedMarket && (
         <PositionModal
           isOpen={isPositionModalOpen}
