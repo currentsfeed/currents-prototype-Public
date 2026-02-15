@@ -7,6 +7,7 @@ export default function TestPersonalization() {
   const [feedData, setFeedData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [inspectorMode, setInspectorMode] = useState(false);
+  const [expandedMarkets, setExpandedMarkets] = useState<Set<string>>(new Set());
   
   const profiles = [
     { id: 'guest', name: '🌐 Guest' },
@@ -37,6 +38,197 @@ export default function TestPersonalization() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleMarketMath = (marketId: string) => {
+    const newExpanded = new Set(expandedMarkets);
+    if (newExpanded.has(marketId)) {
+      newExpanded.delete(marketId);
+    } else {
+      newExpanded.add(marketId);
+    }
+    setExpandedMarkets(newExpanded);
+  };
+
+  const getScoreColor = (score: number): string => {
+    if (score >= 0.7) return '#28a745'; // Green
+    if (score >= 0.4) return '#ffc107'; // Yellow
+    return '#dc3545'; // Red
+  };
+
+  const renderProgressBar = (value: number, color: string = '#0070f3'): string => {
+    const filled = Math.round(value * 20);
+    const empty = 20 - filled;
+    return '█'.repeat(filled) + '░'.repeat(empty);
+  };
+
+  const renderUserProfile = () => {
+    if (!inspectorMode || !feedData?.debug?.userProfile) return null;
+
+    const profile = feedData.debug.userProfile;
+
+    return (
+      <div style={{
+        marginBottom: '30px',
+        padding: '20px',
+        background: '#f8f9fa',
+        borderRadius: '8px',
+        border: '2px solid #6c757d',
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        lineHeight: '1.6'
+      }}>
+        <pre style={{ margin: 0, whiteSpace: 'pre', color: '#000' }}>
+┌─ USER INTEREST PROFILE ────────────────────────────────────┐<br/>
+│                                                             │<br/>
+│ <strong>Categories:</strong>                                              │<br/>
+{profile.categories.slice(0, 5).map(([name, value]: [string, number]) => {
+  const percentage = Math.round(value * 100);
+  const bar = renderProgressBar(value, getScoreColor(value));
+  return `│   ${name.padEnd(15)} ${bar} ${percentage}%${' '.repeat(Math.max(0, 3 - String(percentage).length))}│\n`;
+}).join('')}│                                                             │<br/>
+│ <strong>Top Actors:</strong>                                              │<br/>
+{profile.actors.slice(0, 5).map(([name, value]: [string, number]) => {
+  const percentage = Math.round(value * 100);
+  return `│   ${name.padEnd(15)} ${percentage}%${' '.repeat(Math.max(0, 35 - name.length))}│\n`;
+}).join('')}│                                                             │<br/>
+└─────────────────────────────────────────────────────────────┘
+        </pre>
+      </div>
+    );
+  };
+
+  const renderScoringMath = (marketId: string) => {
+    if (!inspectorMode || !feedData?.debug?.scoringBreakdown) return null;
+
+    const breakdown = feedData.debug.scoringBreakdown.find((s: any) => s.marketId === marketId);
+    if (!breakdown) return null;
+
+    const isExpanded = expandedMarkets.has(marketId);
+
+    return (
+      <div style={{ marginTop: '15px' }}>
+        <button
+          onClick={() => toggleMarketMath(marketId)}
+          style={{
+            padding: '8px 16px',
+            background: '#6c757d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}
+        >
+          🔍 {isExpanded ? 'Hide' : 'Show'} Scoring Math
+        </button>
+
+        {isExpanded && (
+          <div style={{
+            marginTop: '15px',
+            padding: '20px',
+            background: '#ffffff',
+            border: '2px solid #6c757d',
+            borderRadius: '8px',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            lineHeight: '1.5',
+            color: '#000'
+          }}>
+            <pre style={{ margin: 0, whiteSpace: 'pre', color: '#000' }}>
+┌─ SCORING FORMULA ──────────────────────────────────────────┐<br/>
+│ Market: {breakdown.question.slice(0, 45).padEnd(45)} │<br/>
+├─────────────────────────────────────────────────────────────┤<br/>
+│                                                             │<br/>
+│ <strong>FORMULA:</strong>                                                  │<br/>
+│ Score = (C×{breakdown.baseScore.category.weight.toFixed(2)}) + (A×{breakdown.baseScore.actors.weight.toFixed(2)}) + (G×{breakdown.baseScore.angle.weight.toFixed(2)}) + (E×{breakdown.baseScore.eventType.weight.toFixed(2)})│<br/>
+│                                                             │<br/>
+│ <strong>CALCULATION:</strong>                                              │<br/>
+│                                                             │<br/>
+│ <strong>Category Match (C):</strong>                                       │<br/>
+│   User {breakdown.baseScore.category.name} interest: {breakdown.baseScore.category.match.toFixed(2).padStart(4)}              │<br/>
+│   Market category: {breakdown.baseScore.category.name.padEnd(30)}        │<br/>
+│   Match: {breakdown.baseScore.category.match.toFixed(2).padStart(4)}                                       │<br/>
+│   Weighted: {breakdown.baseScore.category.match.toFixed(2)} × {breakdown.baseScore.category.weight.toFixed(2)} = {breakdown.baseScore.category.contribution.toFixed(3).padStart(5)}              │<br/>
+│                                                             │<br/>
+│ <strong>Actor Match (A):</strong>                                          │<br/>
+│   User actor interest: {breakdown.baseScore.actors.avgMatch.toFixed(2).padStart(4)}                       │<br/>
+│   Market actors: [{breakdown.baseScore.actors.names.slice(0, 2).join(', ').slice(0, 25).padEnd(25)}]     │<br/>
+│   Avg Match: {breakdown.baseScore.actors.avgMatch.toFixed(2).padStart(4)}                                 │<br/>
+│   Weighted: {breakdown.baseScore.actors.avgMatch.toFixed(2)} × {breakdown.baseScore.actors.weight.toFixed(2)} = {breakdown.baseScore.actors.contribution.toFixed(3).padStart(5)}              │<br/>
+│                                                             │<br/>
+│ <strong>Angle Match (G):</strong>                                          │<br/>
+│   User {breakdown.baseScore.angle.name} interest: {breakdown.baseScore.angle.match.toFixed(2).padStart(4)}           │<br/>
+│   Market angle: {breakdown.baseScore.angle.name.padEnd(35)}               │<br/>
+│   Match: {breakdown.baseScore.angle.match.toFixed(2).padStart(4)}                                       │<br/>
+│   Weighted: {breakdown.baseScore.angle.match.toFixed(2)} × {breakdown.baseScore.angle.weight.toFixed(2)} = {breakdown.baseScore.angle.contribution.toFixed(3).padStart(5)}              │<br/>
+│                                                             │<br/>
+│ <strong>Event Type Match (E):</strong>                                     │<br/>
+│   User {breakdown.baseScore.eventType.name} interest: {breakdown.baseScore.eventType.match.toFixed(2).padStart(4)}        │<br/>
+│   Market event: {breakdown.baseScore.eventType.name.padEnd(30)}                 │<br/>
+│   Match: {breakdown.baseScore.eventType.match.toFixed(2).padStart(4)}                                       │<br/>
+│   Weighted: {breakdown.baseScore.eventType.match.toFixed(2)} × {breakdown.baseScore.eventType.weight.toFixed(2)} = {breakdown.baseScore.eventType.contribution.toFixed(3).padStart(5)}              │<br/>
+│                                                             │<br/>
+│ {'═'.repeat(61)}│<br/>
+│ <strong>BASE SCORE: {breakdown.baseScore.total.toFixed(3)}</strong>                                  │<br/>
+│                                                             │<br/>
+│ <strong>MODIFIERS:</strong>                                                │<br/>
+{breakdown.modifiers.length === 0 ? '│   (none)                                                    │\n' : ''}
+{breakdown.modifiers.map((mod: any) => {
+  const sign = mod.value >= 0 ? '+' : '';
+  const line = `${sign}${mod.value.toFixed(2)} ${mod.type}`;
+  return `│   ${line.padEnd(58)}│\n`;
+}).join('')}│                                                             │<br/>
+│ {'═'.repeat(61)}│<br/>
+│ <strong style={{ color: getScoreColor(breakdown.finalScore) }}>FINAL SCORE: {breakdown.finalScore.toFixed(3)}</strong>                                │<br/>
+│                                                             │<br/>
+│ Classification: <strong>{breakdown.classification.toUpperCase()}</strong> {breakdown.classification === 'exploitation' ? '✓' : '🔍'}              │<br/>
+│ (Score ≥ 0.5 = high confidence match)                      │<br/>
+└─────────────────────────────────────────────────────────────┘
+            </pre>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const render9010Breakdown = () => {
+    if (!inspectorMode || !feedData?.debug?.exploitationExploration) return null;
+
+    const ee = feedData.debug.exploitationExploration;
+    const exploitationCount = ee.exploitation.length;
+    const explorationCount = ee.exploration.length;
+    const total = exploitationCount + explorationCount;
+
+    return (
+      <div style={{
+        marginTop: '30px',
+        padding: '20px',
+        background: '#f8f9fa',
+        borderRadius: '8px',
+        border: '2px solid #6c757d',
+        fontFamily: 'monospace',
+        fontSize: '14px',
+        lineHeight: '1.6'
+      }}>
+        <pre style={{ margin: 0, whiteSpace: 'pre', color: '#000' }}>
+┌─ EXPLOITATION vs EXPLORATION ──────────────────────────────┐<br/>
+│                                                             │<br/>
+│ <strong style={{ color: '#28a745' }}>EXPLOITATION (90% target):</strong>                               │<br/>
+│   {exploitationCount} markets with score ≥ 0.5                           │<br/>
+│   High confidence matches                                   │<br/>
+│   Actual: {total > 0 ? ((exploitationCount / total * 100).toFixed(1)) : '0.0'}%                                         │<br/>
+│                                                             │<br/>
+│ <strong style={{ color: '#17a2b8' }}>EXPLORATION (10% target):</strong>                                │<br/>
+│   {explorationCount} markets with score &lt; 0.5                            │<br/>
+│   Testing new topics                                        │<br/>
+│   Actual: {total > 0 ? ((explorationCount / total * 100).toFixed(1)) : '0.0'}%                                          │<br/>
+│                                                             │<br/>
+└─────────────────────────────────────────────────────────────┘
+        </pre>
+      </div>
+    );
   };
   
   if (loading) {
@@ -180,6 +372,9 @@ export default function TestPersonalization() {
         </div>
       )}
 
+      {/* User Profile Inspector */}
+      {renderUserProfile()}
+
       {/* Feed Metadata */}
       <div style={{ 
         marginBottom: '30px', 
@@ -251,6 +446,9 @@ export default function TestPersonalization() {
             <strong>Participants:</strong> {feedData.hero.participants.toLocaleString()}
           </p>
         </div>
+        
+        {/* Hero scoring math */}
+        {renderScoringMath(feedData.hero.id)}
       </div>
       
       {/* Feed Sections */}
@@ -333,12 +531,18 @@ export default function TestPersonalization() {
                       <strong>Votes:</strong> {market.participants.toLocaleString()}
                     </span>
                   </div>
+
+                  {/* Scoring Math */}
+                  {renderScoringMath(market.id)}
                 </div>
               ))}
             </div>
           </div>
         );
       })}
+
+      {/* 90/10 Breakdown */}
+      {render9010Breakdown()}
 
       {/* Debug Info Message (if inspector enabled but no debug data) */}
       {inspectorMode && !feedData?.debug && (
