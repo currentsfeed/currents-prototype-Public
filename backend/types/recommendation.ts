@@ -47,6 +47,49 @@ export interface PersonalizedFeed {
     userProfile: string;       // Profile snapshot for debugging
     diversityScore: number;    // How diverse is this feed?
   };
+  debug?: DebugInfo;           // Optional debug information
+}
+
+export interface DebugInfo {
+  userProfile: {
+    userId: string;
+    categories: Array<[string, number]>;
+    actors: Array<[string, number]>;
+    angles: Array<[string, number]>;
+    eventTypes: Array<[string, number]>;
+    recentActivity: Activity[];
+  };
+  scoringBreakdown: ScoringBreakdown[];
+  exploitationExploration: {
+    exploitation: any[];
+    exploration: any[];
+    rejected: any[];
+  };
+  diversityEnforcement: {
+    before: any[];
+    blocked: any[];
+    after: any[];
+  };
+  compositionMath: {
+    target: { personalized: number; trending: number; exploration: number };
+    actual: { personalized: string; trending: string; exploration: string };
+  };
+}
+
+export interface ScoringBreakdown {
+  marketId: string;
+  question: string;
+  baseScore: {
+    category: { name: string; match: number; weight: number; contribution: number };
+    actors: { names: string[]; avgMatch: number; weight: number; contribution: number };
+    angle: { name: string; match: number; weight: number; contribution: number };
+    eventType: { name: string; match: number; weight: number; contribution: number };
+    total: number;
+  };
+  modifiers: Array<{ type: string; value: number; reason: string }>;
+  finalScore: number;
+  classification: 'exploitation' | 'exploration' | 'trending';
+  section: 'personalized' | 'trending' | 'exploration';
 }
 
 export interface FeedCompositionRules {

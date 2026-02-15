@@ -1,4 +1,4 @@
-// API Route: GET /api/feed/personalized?userId=<id>
+// API Route: GET /api/feed/personalized?userId=<id>&debug=true
 
 import { NextRequest, NextResponse } from 'next/server';
 import FeedComposer from '../../../../backend/services/feed-composer';
@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const userId = searchParams.get('userId');
     const totalMarkets = parseInt(searchParams.get('totalMarkets') || '15', 10);
+    const debug = searchParams.get('debug') === 'true';
 
     // Get all markets
     const markets = marketData.markets;
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
         totalMarkets
       );
 
-      return NextResponse.json({
+      const response: any = {
         hero: guestFeed.hero,
         sections: [
           {
@@ -47,7 +48,34 @@ export async function GET(request: NextRequest) {
           }
         ],
         metadata: guestFeed.metadata
-      });
+      };
+
+      if (debug) {
+        response.debug = {
+          userProfile: null,
+          scoringBreakdown: [],
+          exploitationExploration: {
+            exploitation: [],
+            exploration: guestFeed.explorationSection,
+            rejected: []
+          },
+          diversityEnforcement: {
+            before: [],
+            blocked: [],
+            after: []
+          },
+          compositionMath: {
+            target: { personalized: 0, trending: 50, exploration: 50 },
+            actual: { 
+              personalized: 0, 
+              trending: (guestFeed.trendingSection.length / totalMarkets * 100).toFixed(1),
+              exploration: (guestFeed.explorationSection.length / totalMarkets * 100).toFixed(1)
+            }
+          }
+        };
+      }
+
+      return NextResponse.json(response);
     }
 
     // Logged-in user flow
@@ -60,15 +88,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const personalizedFeed = feedComposer.composePersonalizedFeed(
+    const personalizedFeed = feedComposer.composePersonalizedFeedWithDebug(
       userProfile,
       markets,
       marketTagsMap,
       trendingRanks,
-      totalMarkets
+      totalMarkets,
+      debug
     );
 
-    return NextResponse.json({
+    const response: any = {
       hero: personalizedFeed.hero,
       sections: [
         {
@@ -91,7 +120,13 @@ export async function GET(request: NextRequest) {
         }
       ],
       metadata: personalizedFeed.metadata
-    });
+    };
+
+    if (debug && personalizedFeed.debug) {
+      response.debug = personalizedFeed.debug;
+    }
+
+    return NextResponse.json(response);
   } catch (error: any) {
     console.error('Error composing feed:', error);
     return NextResponse.json(

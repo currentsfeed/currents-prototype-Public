@@ -1,6 +1,6 @@
 // Recommendation Engine - Scoring & Ranking
 
-import { UserProfile, MarketTags, ScoredMarket } from '../types/recommendation';
+import { UserProfile, MarketTags, ScoredMarket, ScoringBreakdown } from '../types/recommendation';
 
 export class RecommendationEngine {
   private readonly RECENCY_BOOST = 0.10;  // 10% boost for new markets
@@ -89,6 +89,158 @@ export class RecommendationEngine {
       return score * (1 + this.TRENDING_BOOST_TOP_3);
     }
     return score;
+  }
+
+  /**
+   * Calculate detailed scoring breakdown for debug mode
+   */
+  calculateDetailedScore(
+    userProfile: UserProfile,
+    market: any,
+    marketTags: MarketTags,
+    trendingRank: number = 999,
+    isForExploration: boolean = false
+  ): ScoringBreakdown {
+    // Category match
+    const categoryMatch = userProfile.interests.categories.get(marketTags.category) || 0;
+    const categoryWeight = 0.35;
+    const categoryContribution = categoryMatch * categoryWeight;
+
+    // Actor matches
+    const actorMatches = marketTags.actors.map(actor => userProfile.interests.actors.get(actor) || 0);
+    const avgActorMatch = actorMatches.length > 0 ? actorMatches.reduce((a, b) => a + b, 0) / actorMatches.length : 0;
+    const actorWeight = 0.30;
+    const actorContribution = avgActorMatch * actorWeight;
+
+    // Angle match
+    const angleMatch = userProfile.interests.angles.get(marketTags.angle) || 0;
+    const angleWeight = 0.20;
+    const angleContribution = angleMatch * angleWeight;
+
+    // Event type match
+    const eventTypeMatch = userProfile.interests.eventTypes.get(marketTags.eventType) || 0;
+    const eventTypeWeight = 0.15;
+    const eventTypeContribution = eventTypeMatch * eventTypeWeight;
+
+    // Base score
+    const baseTotal = categoryContribution + actorContribution + angleContribution + eventTypeContribution;
+
+    // Calculate modifiers
+    const modifiers: Array<{ type: string; value: number; reason: string }> = [];
+
+    // 90/10 rule modifier
+    if (isForExploration) {
+      const exploreModifier = Math.random() * 0.7 - baseTotal * 0.7;
+      modifiers.push({
+        type: 'Exploration Boost',
+        value: exploreModifier,
+        reason: 'Testing new topics (randomized for discovery)'
+      });
+    } else {
+      const exploreComponent = (Math.random() - baseTotal) * (1 - this.EXPLOITATION_RATIO);
+      if (Math.abs(exploreComponent) > 0.01) {
+        modifiers.push({
+          type: '90/10 Exploration',
+          value: exploreComponent,
+          reason: '10% random exploration component'
+        });
+      }
+    }
+
+    // Recency boost
+    const now = new Date();
+    const created = new Date(market.closingDate || now);
+    const ageInDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+    if (ageInDays < 3) {
+      const recencyBoost = baseTotal * this.RECENCY_BOOST;
+      modifiers.push({
+        type: 'Recency Boost',
+        value: recencyBoost,
+        reason: `Market < 3 days old (+${(this.RECENCY_BOOST * 100).toFixed(0)}%)`
+      });
+    } else if (ageInDays < 30) {
+      const decayFactor = 1 - (ageInDays - 3) / 27;
+      const recencyBoost = baseTotal * this.RECENCY_BOOST * decayFactor;
+      if (recencyBoost > 0.01) {
+        modifiers.push({
+          type: 'Recency Boost',
+          value: recencyBoost,
+          reason: `Market ${ageInDays.toFixed(1)} days old (decaying boost)`
+        });
+      }
+    }
+
+    // Trending boost
+    if (trendingRank <= 3) {
+      const trendingBoost = baseTotal * this.TRENDING_BOOST_TOP_3;
+      modifiers.push({
+        type: 'Trending Boost',
+        value: trendingBoost,
+        reason: `Rank #${trendingRank} globally (+${(this.TRENDING_BOOST_TOP_3 * 100).toFixed(0)}%)`
+      });
+    }
+
+    // Calculate final score
+    let finalScore = baseTotal;
+    for (const mod of modifiers) {
+      finalScore += mod.value;
+    }
+
+    // Determine classification
+    let classification: 'exploitation' | 'exploration' | 'trending';
+    if (isForExploration) {
+      classification = 'exploration';
+    } else if (finalScore >= 0.5) {
+      classification = 'exploitation';
+    } else {
+      classification = 'exploration';
+    }
+
+    // Determine section
+    let section: 'personalized' | 'trending' | 'exploration';
+    if (isForExploration) {
+      section = 'exploration';
+    } else if (trendingRank <= 10) {
+      section = 'trending';
+    } else {
+      section = 'personalized';
+    }
+
+    return {
+      marketId: market.id,
+      question: market.question,
+      baseScore: {
+        category: {
+          name: marketTags.category,
+          match: categoryMatch,
+          weight: categoryWeight,
+          contribution: categoryContribution
+        },
+        actors: {
+          names: marketTags.actors,
+          avgMatch: avgActorMatch,
+          weight: actorWeight,
+          contribution: actorContribution
+        },
+        angle: {
+          name: marketTags.angle,
+          match: angleMatch,
+          weight: angleWeight,
+          contribution: angleContribution
+        },
+        eventType: {
+          name: marketTags.eventType,
+          match: eventTypeMatch,
+          weight: eventTypeWeight,
+          contribution: eventTypeContribution
+        },
+        total: baseTotal
+      },
+      modifiers,
+      finalScore,
+      classification,
+      section
+    };
   }
 
   /**

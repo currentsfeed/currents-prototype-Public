@@ -1,7 +1,7 @@
 // Feed Composer - Constructs personalized feeds with 60/20/20 split
 
 import RecommendationEngine from './recommendation-engine';
-import { UserProfile, PersonalizedFeed, MarketTags, FeedCompositionRules } from '../types/recommendation';
+import { UserProfile, PersonalizedFeed, MarketTags, FeedCompositionRules, DebugInfo, ScoringBreakdown } from '../types/recommendation';
 
 export class FeedComposer {
   private engine: RecommendationEngine;
@@ -148,6 +148,142 @@ export class FeedComposer {
     // Cache the feed
     this.cacheMap.set(userProfile.userId, { feed, timestamp: Date.now() });
 
+    return feed;
+  }
+
+  /**
+   * Compose a personalized feed with detailed debug information
+   */
+  composePersonalizedFeedWithDebug(
+    userProfile: UserProfile,
+    markets: any[],
+    marketTagsMap: Map<string, MarketTags>,
+    trendingRanks: Map<string, number>,
+    totalMarkets: number = 15,
+    includeDebug: boolean = false
+  ): PersonalizedFeed {
+    // First, get the regular feed
+    const feed = this.composePersonalizedFeed(userProfile, markets, marketTagsMap, trendingRanks, totalMarkets);
+
+    // If debug not requested, return regular feed
+    if (!includeDebug) {
+      return feed;
+    }
+
+    // Generate debug information
+    const debug: DebugInfo = {
+      userProfile: {
+        userId: userProfile.userId,
+        categories: Array.from(userProfile.interests.categories.entries())
+          .sort((a, b) => b[1] - a[1]),
+        actors: Array.from(userProfile.interests.actors.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10),
+        angles: Array.from(userProfile.interests.angles.entries())
+          .sort((a, b) => b[1] - a[1]),
+        eventTypes: Array.from(userProfile.interests.eventTypes.entries())
+          .sort((a, b) => b[1] - a[1]),
+        recentActivity: userProfile.recentActivity.slice(0, 10)
+      },
+      scoringBreakdown: [],
+      exploitationExploration: {
+        exploitation: [],
+        exploration: [],
+        rejected: []
+      },
+      diversityEnforcement: {
+        before: [],
+        blocked: [],
+        after: []
+      },
+      compositionMath: {
+        target: { personalized: 60, trending: 20, exploration: 20 },
+        actual: {
+          personalized: ((feed.personalizedSection.length / totalMarkets) * 100).toFixed(1),
+          trending: ((feed.trendingSection.length / totalMarkets) * 100).toFixed(1),
+          exploration: ((feed.explorationSection.length / totalMarkets) * 100).toFixed(1)
+        }
+      }
+    };
+
+    // Generate detailed scoring breakdown for all markets in feed
+    const allFeedMarkets = [
+      feed.hero,
+      ...feed.personalizedSection,
+      ...feed.trendingSection,
+      ...feed.explorationSection
+    ];
+
+    for (const market of allFeedMarkets) {
+      const tags = marketTagsMap.get(market.id);
+      if (!tags) continue;
+
+      const trendingRank = trendingRanks.get(market.id) || 999;
+      const isExploration = feed.explorationSection.some(m => m.id === market.id);
+      
+      const breakdown = this.engine.calculateDetailedScore(
+        userProfile,
+        market,
+        tags,
+        trendingRank,
+        isExploration
+      );
+
+      debug.scoringBreakdown.push(breakdown);
+
+      // Categorize into exploitation/exploration
+      if (breakdown.classification === 'exploitation') {
+        debug.exploitationExploration.exploitation.push(market);
+      } else {
+        debug.exploitationExploration.exploration.push(market);
+      }
+    }
+
+    // Generate diversity enforcement data
+    // Score all markets first
+    const allScored = this.engine.scoreAllMarkets(userProfile, markets, marketTagsMap, trendingRanks);
+    const topScored = allScored.slice(0, totalMarkets * 2); // Get more than needed to show what was blocked
+
+    debug.diversityEnforcement.before = topScored.map(sm => sm.market);
+
+    // Apply diversity rules and track what gets blocked
+    const blocked: any[] = [];
+    const after: any[] = [];
+    let lastCategory = '';
+    let streakCount = 0;
+
+    for (const scored of topScored) {
+      if (after.length >= totalMarkets) break;
+
+      if (scored.market.category === lastCategory) {
+        if (streakCount >= 2) {
+          blocked.push(scored.market);
+          continue;
+        }
+        streakCount++;
+      } else {
+        lastCategory = scored.market.category;
+        streakCount = 1;
+      }
+
+      after.push(scored.market);
+    }
+
+    debug.diversityEnforcement.blocked = blocked;
+    debug.diversityEnforcement.after = after;
+
+    // Find rejected markets (below threshold or blocked)
+    const feedMarketIds = new Set(allFeedMarkets.map(m => m.id));
+    debug.exploitationExploration.rejected = allScored
+      .filter(sm => !feedMarketIds.has(sm.market.id))
+      .slice(0, 10)
+      .map(sm => ({
+        ...sm.market,
+        _rejectionReason: sm.score < 0.2 ? 'Score too low' : 'Blocked by diversity rules',
+        _score: sm.score
+      }));
+
+    feed.debug = debug;
     return feed;
   }
 
